@@ -64,11 +64,11 @@ def plot_policy(ax, env, Q_table):
                color='white')
 
   ax.annotate('S',
-              xy=(start_position[0] + .35, start_position[1] + .65),
+              xy=(start_position[0] + .1, start_position[1] + 1),
               color='black',
               size=20)
   ax.annotate('G',
-              xy=(goal_position[0] + .35, goal_position[1] + .65),
+              xy=(goal_position[0] + .1, goal_position[1] + .95),
               color='black',
               size=20)
 
@@ -134,11 +134,11 @@ def plot_results(train_reward, test_reward, Q_table, env):
   ax_list[1, 1].set_yticks([])
   ax_list[1, 1].set_title('Value fun. (from Q table)')
   ax_list[1, 1].annotate('S',
-                         xy=(start_position[0] - .15, start_position[0] + .15),
+                         xy=(start_position[0] - .45, start_position[0] + .55),
                          color='white',
                          size=20)
   ax_list[1, 1].annotate('G',
-                         xy=(goal_position[0] - .15, goal_position[0] + .15),
+                         xy=(goal_position[0] - .5, goal_position[0] + .35),
                          color='white',
                          size=20)
 
