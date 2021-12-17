@@ -9,10 +9,6 @@ from torch.optim import Adam
 from cartpole_utils import plot_results
 from utils import env_reset, env_step
 
-
-# TODO HIER WEITER :3
-#  dann parameter anpassen, zb fuer alle sachen je 2 neue sachen, rest gleich lassen zB nhidden 10, 30...
-
 seed = 42
 env = gym.make("CartPole-v0")
 env.seed(seed)
@@ -23,11 +19,11 @@ num_observations = env.observation_space.shape[0]
 Q = torch.zeros([num_observations, num_actions])
 
 # Parameters
-num_hidden = 20  # 10, 40
+num_hidden = 20
 alpha = 1e-3
-eps = 1  # 0.01, 0.9
-gamma = 0.9  # 0.2, 1
-eps_decay = 0.99  # 0.1, 0.8
+eps = 1.0
+gamma = 0.9
+eps_decay = 0.999
 max_train_iterations = 1000
 max_test_iterations = 100
 max_episode_length = 200
@@ -37,27 +33,32 @@ def convert(x):
     return torch.tensor(x).float().unsqueeze(0)
 
 
-model = nn.Sequential(
-    nn.Linear(in_features=num_observations, out_features=num_hidden),
-    nn.ReLU(),
-    nn.Linear(in_features=num_hidden, out_features=num_actions)
-)
+model = nn.Sequential(nn.Linear(in_features=num_observations, out_features=num_actions))
 
 
 def policy(state, is_training):
-    """ epsilon-greedy policy
-    """
+    """epsilon-greedy policy"""
 
     global eps
 
     with torch.no_grad():
-        if is_training and np.random.uniform(0, 1) < eps:  # choose actions deterministically during test phase
-            return torch.tensor(np.random.choice(num_actions))  # return a random action with probability epsilon
+        if (
+            is_training and np.random.uniform(0, 1) < eps
+        ):  # choose actions deterministically during test phase
+            return torch.tensor(
+                np.random.choice(num_actions)
+            )  # return a random action with probability epsilon
         else:
-            return np.argmax(model(torch.tensor(state)))  # otherwise return the action approximated by linear model
+            return np.argmax(
+                model(torch.tensor(state))
+            )  # otherwise return the action approximated by linear model
 
 
-criterion = MSELoss()  # using MSE instead of least squared error only differs in a scaling factor of 1/2 instead of 1/N for N samples which only affects convergence rate but not the global
+# using MSE instead of least squared error only differs in a scaling factor of 1/2 instead of 1/N for N
+#  samples which only affects convergence rate but not the global
+criterion = (
+    MSELoss()
+)
 # minimization
 optimizer = Adam(model.parameters(), lr=alpha)
 
@@ -78,7 +79,6 @@ def compute_loss(state, action, reward, next_state, next_action, done):
 
     output = q
     target = reward + gamma * next_q
-
     return criterion(output, target)
 
 
@@ -92,7 +92,7 @@ def train_step(state, action, reward, next_state, next_action, done):
 
 def run_episode(is_training, is_rendering=False):
     global eps
-    episode_reward, episode_loss = 0, 0.
+    episode_reward, episode_loss = 0, 0.0
     state = env_reset(env, is_rendering)
     action = policy(state, eps)
     for t in range(max_episode_length):
@@ -101,10 +101,14 @@ def run_episode(is_training, is_rendering=False):
         next_action = policy(next_state, is_training)
 
         if is_training:
-            episode_loss += train_step(state, action, reward, next_state, next_action, done)
+            episode_loss += train_step(
+                state, action, reward, next_state, next_action, done
+            )
         else:
             with torch.no_grad():
-                episode_loss += compute_loss(state, action, reward, next_state, next_action, done).item()
+                episode_loss += compute_loss(
+                    state, action, reward, next_state, next_action, done
+                ).item()
 
         state, action = next_state, next_action
         if done:
@@ -118,8 +122,8 @@ def update_metrics(metrics, episode):
 
 
 def print_metrics(it, metrics, is_training, window=100):
-    reward_mean = np.mean(metrics['reward'][-window:])
-    loss_mean = np.mean(metrics['loss'][-window:])
+    reward_mean = np.mean(metrics["reward"][-window:])
+    loss_mean = np.mean(metrics["loss"][-window:])
     mode = "train" if is_training else "test"
     print(f"It {it:4d} | {mode:5s} | reward {reward_mean:5.1f} | loss {loss_mean:5.2f}")
 

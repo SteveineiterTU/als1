@@ -1,17 +1,12 @@
 import gym
 import numpy as np
+from gym.envs.toy_text import FrozenLakeEnv
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
-from torch.nn import MSELoss
-from torch.optim import Adam
-
+import torch.nn.functional as F
+import torch.optim as optim
 from cartpole_utils import plot_results
 from utils import env_reset, env_step
-
-
-# TODO HIER WEITER :3
-#  dann parameter anpassen, zb fuer alle sachen je 2 neue sachen, rest gleich lassen zB nhidden 10, 30...
 
 seed = 42
 env = gym.make("CartPole-v0")
@@ -20,46 +15,47 @@ torch.manual_seed(seed)
 
 num_actions = env.action_space.n
 num_observations = env.observation_space.shape[0]
-Q = torch.zeros([num_observations, num_actions])
 
 # Parameters
-num_hidden = 20  # 10, 40
-alpha = 1e-3
-eps = 1  # 0.01, 0.9
-gamma = 0.9  # 0.2, 1
-eps_decay = 0.99  # 0.1, 0.8
+num_hidden = 20
+# alpha = 3e-1  # Do we need this?
+eps = 1.0
+gamma = 0.9
+eps_decay = 0.999
 max_train_iterations = 1000
 max_test_iterations = 100
 max_episode_length = 200
+
+# Our changes:
+theta = np.zeros((num_observations, num_actions))
 
 
 def convert(x):
     return torch.tensor(x).float().unsqueeze(0)
 
 
+# TODO: create a linear model using Sequential and Linear.
+
+# Linear model from a) i guess
 model = nn.Sequential(
-    nn.Linear(in_features=num_observations, out_features=num_hidden),
-    nn.ReLU(),
-    nn.Linear(in_features=num_hidden, out_features=num_actions)
+    nn.Linear(1, 1)
 )
 
 
 def policy(state, is_training):
-    """ epsilon-greedy policy
-    """
-
+    # TODO: Implement an epsilon-greedy policy
+    # - with probability eps return a random action
+    # - otherwise find the action that maximizes Q
+    # - During the rollout phase, we don't need to compute the gradient!
+    #   (Hint: use torch.no_grad()). The policy should return torch tensors.
     global eps
-
-    with torch.no_grad():
-        if is_training and np.random.uniform(0, 1) < eps:  # choose actions deterministically during test phase
-            return torch.tensor(np.random.choice(num_actions))  # return a random action with probability epsilon
-        else:
-            return np.argmax(model(torch.tensor(state)))  # otherwise return the action approximated by linear model
+    return torch.tensor(np.random.choice(num_actions))
 
 
-criterion = MSELoss()  # using MSE instead of least squared error only differs in a scaling factor of 1/2 instead of 1/N for N samples which only affects convergence rate but not the global
-# minimization
-optimizer = Adam(model.parameters(), lr=alpha)
+# TODO: create the appropriate criterion (loss_fn) and Adam optimizer
+criterion = nn.MSELoss()
+alpha = 1e-3
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
 def compute_loss(state, action, reward, next_state, next_action, done):
@@ -70,16 +66,16 @@ def compute_loss(state, action, reward, next_state, next_action, done):
     reward = torch.tensor(reward).view(1, 1)
     done = torch.tensor(done).int().view(1, 1)
 
-    q = model(state)[0][action]
-    with torch.no_grad():
-        next_q = model(next_state)[0][next_action]
-        if done:
-            next_q = torch.zeros_like(next_q)
+    # TODO: Compute Q(s, a) and Q(s', a') for the given state-action pairs.
+    # Detach the gradient of Q(s', a'). Why do we have to do that? Think about
+    # the effect of backpropagating through Q(s, a) and Q(s', a') at once!
+    # TODO: Return the loss computed using the criterion.
+    # TODO Stefan: hier dann die calculationen, Q ist halt einfach mitn theta als lookup table und so
 
-    output = q
-    target = reward + gamma * next_q
-
-    return criterion(output, target)
+    # Output = current state??
+    # Target = next state?
+    # criterion(output, target)
+    return None
 
 
 def train_step(state, action, reward, next_state, next_action, done):
@@ -92,7 +88,7 @@ def train_step(state, action, reward, next_state, next_action, done):
 
 def run_episode(is_training, is_rendering=False):
     global eps
-    episode_reward, episode_loss = 0, 0.
+    episode_reward, episode_loss = 0, 0.0
     state = env_reset(env, is_rendering)
     action = policy(state, eps)
     for t in range(max_episode_length):
@@ -101,10 +97,14 @@ def run_episode(is_training, is_rendering=False):
         next_action = policy(next_state, is_training)
 
         if is_training:
-            episode_loss += train_step(state, action, reward, next_state, next_action, done)
+            episode_loss += train_step(
+                state, action, reward, next_state, next_action, done
+            )
         else:
             with torch.no_grad():
-                episode_loss += compute_loss(state, action, reward, next_state, next_action, done).item()
+                episode_loss += compute_loss(
+                    state, action, reward, next_state, next_action, done
+                ).item()
 
         state, action = next_state, next_action
         if done:
@@ -118,8 +118,8 @@ def update_metrics(metrics, episode):
 
 
 def print_metrics(it, metrics, is_training, window=100):
-    reward_mean = np.mean(metrics['reward'][-window:])
-    loss_mean = np.mean(metrics['loss'][-window:])
+    reward_mean = np.mean(metrics["reward"][-window:])
+    loss_mean = np.mean(metrics["loss"][-window:])
     mode = "train" if is_training else "test"
     print(f"It {it:4d} | {mode:5s} | reward {reward_mean:5.1f} | loss {loss_mean:5.2f}")
 
@@ -131,6 +131,7 @@ for it in range(max_train_iterations):
     if it % 100 == 0:
         print_metrics(it, train_metrics, is_training=True)
     eps *= eps_decay
+
 
 test_metrics = dict(reward=[], loss=[])
 for it in range(max_test_iterations):

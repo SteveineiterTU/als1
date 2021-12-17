@@ -1,0 +1,194 @@
+1a: Training on 1000 successive episodes results in 100 out of 100 test episodes to gain a reward.
+
+1b: Training on 1000 successive episodes results in 100 out of 100 test episodes to gain a reward.
+
+1c: We chose the on-policy algorithm (i.e. SARSA from task 1a) in order to compare the different epsilon values.
+
+Average accumulated rewards:
+epsilon = 0: avg accumulated reward = 0
+epsilon = 0.01: avg accumulated reward = 0
+epsilon = 0.1: avg accumulated reward = 0
+epsilon = 0.7: avg accumulated reward = 0
+epsilon = 0.8: avg accumulated reward = 1
+epsilon = 0.9: avg accumulated reward = 1
+epsilon = 1: avg accumulated reward = 1
+
+Epsilon values 0.1 and 0.01 limit the exploration phase of the learning algorithm too much since the initial (starting at episode 1) probability to take random actions is already very small and after that the epsilon value decays even further exponentially. This results in the algorithm from gaining any rewards since only reaching the goal results in any rewards being awarded. Since the algorithm fails to learn for any of these two epsilon values during the training phase, no valid paths can be found during test phase, thus resulting in no an average of 0 for the accumulated rewards in the test phase.
+
+For an epsilon value of 0 the chance of taking a random step is not only small (in comparison to epsilon values of 0.1 and 0.01) but is actually 0 for all training episodes. Hence, the algorithm never has a chance to perform any exploration and attempts to choose the max-Q value of the greedy policy. Our Q-matrix has been initialized with zeroes (0.0) and will always remain in this state if epsilon = 0. Thus real learning can never happen since no rewards are gained. As a result the average accumulated reward in the test phase also will always stay 0.
+
+Now for the epsilon value = 1 the exploration phase is very large since initially (starting from episode 1) the algorithm only takes random steps and only slowly starts to incorporate steps based on the max-Q values (i.e. greedy value, the value with the highest expected reward being assigned based on the observed state and performed action) as well. This is true for many episodes since the decay of the epsilon value is still set to a very moderate value of 0.999 (e.g. after the first 400 episodes the policy still performs exploration and chooses a random value with a probability of 67%). Once the algorithm has been able to find one suitable solution to the frozen lake problem, it will take the same route through the frozen lake each time in the test phase since the policy dictates to always choose the greedy value (epsilon = 0 for the test phase) and the actions taken are all deterministic. Hence, choosing and epsilon value of 1 is by far the best choice and results in a perfect test scores, i.e. an average accumulated rewards of 1.
+
+Upon trying out other epsilon values other than the ones provided in the assignment, we see that even epsilon = 0.7 is not sufficient to gain any rewards at all. From epsilon = 0.8 upwards including epsilon = 1 we get the maximum average accumulated reward of 1. We will continue with an epsilon value of 1 and test out different gamma values.
+
+Results of different gamma values:
+gamma = 0: avg accumulated reward = 0
+gamma = 0.2: avg accumulated reward = 1
+gamma = 0.7: avg accumulated reward = 1
+gamma = 0.95: avg accumulated reward = 1
+gamma = 1: avg accumulated reward = 1
+gamma = 1.1: avg accumulated reward = 0
+gamma = 2: avg accumulated reward = 0
+
+Gamma defines how much importance the policy attributes towards future rewards. We can see that eliminating gamma (i.e. gamma = 0) results in our policy being incapable of learning the necessary behavior to choose our actions. In general the agent can still benefit from the reward in the current state, however future states are excluded. In our frozen lake world the only possible reward for gamma = 0 exists in the second last field (index = 14), which is the frozen field right left to the goal. The reason for this is that no other combination of observation/state and action exists which leads to gaining a reward. Only two fields are right next to the goal, the one on the left side and the one on the top of the goal. However, the field on top of the goal is a hole, hence the episode ends if the agent steps into that hole. This can easily be seen in the provided graph of the environment (top right). Gamma = 0 prevents taking into account any future rewards and therefore the policy can never update the other state+action combinations effectively preventing the agent to actually learn how to navigate through the frozen lake scenario.
+
+Any values 0 < gamma < 1 simply reflect a weight factor for how strongly future rewards should be considered. The higher the gamma value, the easier future rewards are propagated backwards in our deterministic example. This can be seen by either inspecting the Q-values directly or the coloration of the plotted environment. Higher values propagate rewards of future steps further and with higher values. Mathematically this can be easily seen since for each future time step (action performed) we take into account multiplies the expected reward by gamma, e.g. 3 steps into the future equals to gamma^3.
+
+Now gamma = 1 works perfectly fine in our deterministic frozen lake example. However, in general a gamma value of 1 should be avoided since it might hinder the policy from converging. The reason being is that once a Q-value for a certain observation and action has been updated, from now on whenever our policy is not randomly choosing values (such as in the epsilon greedy algorithm) but instead relies on the Q states, gamma = 1 will assign a full reward towards taking the action which leads us into the corresponding observation where the policy originally gained the Q value update for that observation and action. Since the policy will always choose the action out of all possible actions which maximizes the expected reward, other possible paths (i.e. actions) are simply discarded and never explored. In scenarios like these the policy might not even find a solution at all (e.g. finding a path through a labyrinth) if at some point within that path prior to this the respective Q value has been updated. The Q values for the other possible actions (and hence paths) are simply still 0 and will always discarded in favor of the "greedy" reward-maximizing pick. In other scenarios the policy might be able to find a valid solution but will fail to converge to a better/more optimal solution. Summarized, in general a gamma value of 1 is dangerous since it might prevent the policy from converging to the solution at all, but in this specific scenario there is only one single field (the one mentioned when describing the case for gamma = 0; the frozen field left of the goal) which forms part of the valid solution for this problem and this is also the only state+action combination in which the policy will receive its first update. Hence, there are not other possibilities or paths which can be excluded and the reward can be propagated backwards.
+
+In theory gamma values above 1 don't converge. Trying out gamma values above 1 indeed prevent the policy from converging. A gamma value above 1 means that future rewards count higher than the same reward when the agent actually finds itself in that state. So the further away the agent is from reaching his goal (or in general any kind of state+action combination in the future), the higher the reward. Since the policy chooses actions which maximize the overall reward, the policy would actually choose actions which lead the agent into former states (ones which are further away instead of closer to the goal) since these states provide actions with higher rewards. The plotted environment graphs reflect this: We can see extremely high reward levels in the top left, the highest value being in the start field since this state is furthest away from the goal but contains actions (moving right and down) which in the future lead to rewards.
+
+1d:
+
+-> ex1_slippery_SARSA
+epsilon = 0.1, gamma = 1: avg accumulated reward = 0
+epsilon = 0.01, gamma = 1: avg accumulated reward = 0
+
+In both cases the policy fails to converge. As seen in the inspection in task 1a these epsilon values were too small for the policy to converge successfully.
+
+-> ex1_slippery_Q
+epsilon = 0.1, gamma = 1: avg accumulated reward = 0
+epsilon = 0.01, gamma = 1: avg accumulated reward = 0
+
+The result for Q learning the same as for SARSA. In both cases the policy fails to converge. As seen in the inspection in task 1a these epsilon values were too small for the policy to converge successfully.
+
+-> Performance of the SARSA algorithm after adding the rewards:
+epsilon = 1, gamma = 1: avg accumulated reward = 18.66
+epsilon = 0.1, gamma = 1: avg accumulated reward = 10.63
+epsilon = 0.01, gamma = 1: avg accumulated reward = -10.64
+
+
+
+-> Performance of the Q algorithm after adding the rewards:
+epsilon = 1, gamma = 0.9: avg accumulated reward =
+epsilon = 0.1, gamma = 1: avg accumulated reward =
+epsilon = 0.01, gamma = 1: avg accumulated reward =
+
+
+
+
+
+
+
+
+
+
+
+
+1d: reward modification -> add "done" to interface // plot function in utils needs to be updated
+"only update the reward for the action you got a reward for"
+2c: linear model will work badly, hence nonlinear is necessary
+
+In general it is possible to solve cartpole with a linear model (here not).
+sarsa learning loss with pytorch for comparison: 30 or 40
+
+in general: provided function is just a guideline (but should work as is unless you have different scaling factor)
+
+
+
+
+1e: We chose the on-policy algorithm (i.e. SARSA as in task 1c) 
+
+On the first attmept we used the best performing epsilon and gamma which we got from 1c.
+epsilon = 1, gamma = 0.95: avg accumulated reward = 0.0
+
+As we can see this leads to no result. This is, because there is a too low probability that we will reach the goal, since the field has a size of 8x8 => so the agent has no chance to learn a path that leads to the goal.
+
+After that we tried different combinations as in c), for example
+
+epsilon = 1, gamma = 0.2: avg accumulated reward = 0.0
+epsilon = 0.8, gamma = 0.95: avg accumulated reward = 0.0
+epsilon = 0.8, gamma = 0.2: avg accumulated reward = 0.0
+
+Here we see that the results are quiet the same. To find a solutions we decided to introduce a modified reward as in part d)
+
+Again with our best combination from part c): 
+epsilon = 1, gamma = 0.95: avg accumulated reward = 0.0
+
+We can see that it still can't solve the grid, that is because the agent can't find the path because the goal is too far away for the agent -> we need to increase gamma so that the reward in the futrue gets increased. Since we know that our problem is deterministic and we only have 1 goal as stated in c) it is fine to use gamma = 1. TODO CHECKEN
+So if we set gamma to 1 we will be able to track the paths and emerge to a solution:
+epsilon = 1, gamma = 1: avg accumulated reward = 87.0
+
+
+
+
+
+2c)
+
+Different activation functions:
+Tanh
+Train
+It  900 | train | reward 148.4 | loss  0.50
+Test
+It  100 | test  | reward 200.0 | loss  0.27
+
+LeakyReLu 
+Train
+It  900 | train | reward 155.9 | loss  0.63
+Test
+It  100 | test  | reward 200.0 | loss  0.40
+
+Can you find a set of parameters that works better? 
+
+num_hidden 10:
+It  900 | train | reward  85.2 | loss  1.13
+It  100 | test  | reward 173.4 | loss  0.37
+
+num_hidden 40:
+It  900 | train | reward 151.8 | loss  0.47
+It  100 | test  | reward 200.0 | loss  0.37
+--------------------
+eps 0.01:
+It  900 | train | reward   9.3 | loss  0.03
+It  100 | test  | reward   9.4 | loss  0.02
+
+eps 0.9:
+It  900 | train | reward 150.9 | loss  0.68
+It  100 | test  | reward 200.0 | loss  0.39
+--------------------
+gamma 0.2:
+It  900 | train | reward  24.0 | loss  0.00
+It  100 | test  | reward  46.1 | loss  0.00
+
+gamma 1:
+It  900 | train | reward  54.7 | loss 60.71
+It  100 | test  | reward  52.7 | loss 78.97
+--------------------
+eps_decay 0.1:
+It  900 | train | reward   9.3 | loss  0.02
+It  100 | test  | reward   9.4 | loss  0.03
+
+eps_decay 0.8:
+It  900 | train | reward   9.3 | loss  0.03
+It  100 | test  | reward   9.4 | loss  0.03
+
+eps_decay 0.99:
+It  900 | train | reward  50.1 | loss  0.80
+It  100 | test  | reward 121.3 | loss  0.39
+
+
+Find a suitable learning rate for the Adam optimizer (you do not have to tune the other parameters ofthe optimizer).
+1e-5
+Train
+It  900 | train | reward  12.8 | loss  1.02
+Test
+It  100 | test  | reward   9.7 | loss  1.02
+
+1e-2
+Train
+It  900 | train | reward 101.5 | loss  0.82
+Test
+It  100 | test  | reward 200.0 | loss  0.41
+
+Here we can see that the learning rate of 1e-3, which is the standart of the Adam optimizer the best one to use.
+
+
+
+
+
+
+
+
+
+
+end
